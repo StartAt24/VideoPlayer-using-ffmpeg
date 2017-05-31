@@ -1,0 +1,27 @@
+﻿Build started 2017/5/27 16:33:55.
+     1>Project "F:\vs2013Project\IpcEmulator\IpcEmulator\IpcEmulator.vcxproj" on node 2 (Build target(s)).
+     1>ClCompile:
+         C:\Program Files\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /I.\GeneratedFiles /I. /IE:\Qt5.6.2\5.6\msvc2013\include /I.\GeneratedFiles\Debug /IE:\Qt5.6.2\5.6\msvc2013\include\QtCore /IE:\Qt5.6.2\5.6\msvc2013\include\QtGui /IE:\Qt5.6.2\5.6\msvc2013\include\QtWidgets /Zi /nologo /W1 /WX- /Od /Oy- /D UNICODE /D WIN32 /D WIN64 /D QT_DLL /D QT_CORE_LIB /D QT_GUI_LIB /D QT_WIDGETS_LIB /Gm- /EHsc /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt DJJQue.cpp
+         DJJQue.cpp
+     1>f:\vs2013project\ipcemulator\ipcemulator\ffmpeg\libavutil\rational.h : warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss
+       Link:
+         C:\Program Files\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"F:\vs2013Project\IpcEmulator\Win32\Debug\\IpcEmulator.exe" /NOLOGO /LIBPATH:E:\Qt5.6.2\5.6\msvc2013\lib qtmaind.lib Qt5Cored.lib Qt5Guid.lib Qt5Widgetsd.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"F:\vs2013Project\IpcEmulator\Win32\Debug\IpcEmulator.pdb" /SUBSYSTEM:WINDOWS /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"F:\vs2013Project\IpcEmulator\Win32\Debug\IpcEmulator.lib" /MACHINE:X86 /SAFESEH:NO Debug\Cffmpeg.obj
+         Debug\DJJQue.obj
+         Debug\moc_ipcemulator.obj
+         Debug\moc_logindlg.obj
+         Debug\moc_RcvFrame.obj
+         Debug\moc_VideoThread.obj
+         Debug\qrc_ipcemulator.obj
+         Debug\GiveFrame.obj
+         Debug\ipcemulator.obj
+         Debug\logindlg.obj
+         Debug\main.obj
+         Debug\RcvFrame.obj
+         Debug\SDLPlay.obj
+         Debug\VideoThread.obj
+         IpcEmulator.vcxproj -> F:\vs2013Project\IpcEmulator\Win32\Debug\IpcEmulator.exe
+     1>Done Building Project "F:\vs2013Project\IpcEmulator\IpcEmulator\IpcEmulator.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:00.89
