@@ -1,14 +1,19 @@
 #include "DJJQue.h"
 
+#define  MAX_CACHE_PKT   50
 
 DJJQue::DJJQue()
-{
+{	
+	//创建信号量;
 	//第一个参数表示安全控制，一般直接传入NULL。
 	//第二个参数表示初始资源数量。
 	//第三个参数表示最大并发数量。
 	//第四个参数表示信号量的名称，传入NULL表示匿名信号量。
 	m_hFrameSem = CreateSemaphore(NULL, 0, 10, NULL);
-	m_hPktSem = CreateSemaphore(NULL, 0, 10, NULL);
+	m_hPktSem = CreateSemaphore(NULL, 0, MAX_CACHE_PKT, NULL);
+
+	//初始化事件,自动置位, 出事无出发的匿名事件;
+	m_hEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
 }
 
 
@@ -22,8 +27,8 @@ void DJJQue::PushFrame(AVFrame* frameIn)
 {
 	m_qFrameLock.lock();
 	m_qFrmaeQue.push(frameIn);
-	m_qFrameLock.unlock();
 	ReleaseSemaphore(m_hFrameSem, 1, NULL);
+	m_qFrameLock.unlock();
 }
 
 void DJJQue::PopFrame(AVFrame** frameOut)
@@ -38,11 +43,19 @@ void DJJQue::PopFrame(AVFrame** frameOut)
 int iIn = 0, iOut = 0;
 void DJJQue::PushPacket(AVPacket* pktIn)
 {
+	//是否可以进行pushpacket
+	WaitForSingleObject(m_hEvent, INFINITE);
 	m_qPktLock.lock();
 	m_qPktQue.push(pktIn);
 	printf("Push in %d\n", iIn++);
+	long count;
+	ReleaseSemaphore(m_hPktSem, 1, &count);
+	if (count >= MAX_CACHE_PKT-1)
+	{
+		ResetEvent(m_hEvent);
+		printf("ResetEvent ~ Count: %ld \n", count);
+	}
 	m_qPktLock.unlock();
-	ReleaseSemaphore(m_hPktSem, 1, NULL);
 }
 
 void DJJQue::PopPacket(AVPacket** pktOut)
@@ -52,5 +65,15 @@ void DJJQue::PopPacket(AVPacket** pktOut)
 	*pktOut = m_qPktQue.front();
 	m_qPktQue.pop();
 	printf("Pop out %d\n", iOut++);
+
+	//获取信号量当前的值;
+	long count = 0;
+	ReleaseSemaphore(m_hPktSem, 0, &count);
+	if (count < MAX_CACHE_PKT-1)
+	{
+		SetEvent(m_hEvent);
+	}
+
+	printf("pop out~ Count: %ld \n", count);
 	m_qPktLock.unlock();
 }

@@ -18,15 +18,17 @@ void CGiveFrame::run()
 	while (1)
 	{
 		uint8_t* test;
-		int t;
+		int lineSize;
 
 		AVPacket* pkt;
 		m_pDJJQue->PopPacket(&pkt);
 
-		m_pFFmpeg->ProcessPkt(pkt, &test, &t);
-		m_pSDLPlay->SDLShow(test, t);
-
-		free(test);
+		
+		if (m_pFFmpeg->ProcessPkt(pkt, &test, &lineSize))
+		{
+			m_pSDLPlay->SDLShow(test, lineSize);
+			free(test);
+		}
 		//av_packet_free 才能释放pkt本身和其拥有的数据所占的内存
 		av_packet_free(&pkt);
 	}

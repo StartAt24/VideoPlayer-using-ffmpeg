@@ -21,7 +21,8 @@ private:
 	QMutex				  m_qFrameLock;
 	QMutex				  m_qPktLock;
 
-	HANDLE				  m_hFrameSem;
-	HANDLE				  m_hPktSem;
+	HANDLE				  m_hFrameSem;			//frame的信号量
+	HANDLE				  m_hPktSem;			//packet的信号量
+	HANDLE				  m_hEvent;				//事件的句柄,事件为: 当push了足够多的帧之后不做解码了.
 };
 

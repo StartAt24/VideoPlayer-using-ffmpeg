@@ -29,8 +29,8 @@ void CVideoThread::ThreadInit()
 
 void CVideoThread::run()
 {
-	QString testPath("C:/Users/DJJ/Desktop/1080.asf");
-	//QString testPath("rtsp://admin:admin123@10.255.251.238");
+	//QString testPath("C:/Users/DJJ/Desktop/1080.asf");
+	QString testPath("rtsp://admin:admin123@10.255.251.238");
 	//while (m_bRunning)
 	//{
 		DecodeAndShow(testPath);
@@ -43,7 +43,7 @@ int CVideoThread::DecodeAndShow(QString videofile)
 
 	m_pFFmpeg->OpenVideoFile(videofile);
 	m_pFFmpeg->SwsVideo();
-	m_pSDLPlay->SDLCreateWindow(1920, 1080, m_hWnd);
+	m_pSDLPlay->SDLCreateWindow(m_pFFmpeg->m_pCodecCtx->width, m_pFFmpeg->m_pCodecCtx->height, m_hWnd);
 	
 	/*
 	while (!m_bExitDecode)
