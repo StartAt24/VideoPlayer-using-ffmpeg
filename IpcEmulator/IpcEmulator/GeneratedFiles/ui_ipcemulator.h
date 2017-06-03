@@ -15,11 +15,6 @@
 #include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QMainWindow>
-/*
-#include <QtWidgets/QMenuBar>
-#include <QtWidgets/QStatusBar>
-#include <QtWidgets/QToolBar>
-*/
 #include <QtWidgets/QWidget>
 
 QT_BEGIN_NAMESPACE
@@ -27,31 +22,17 @@ QT_BEGIN_NAMESPACE
 class Ui_IpcEmulatorClass
 {
 public:
-    QMenuBar *menuBar;
-    QToolBar *mainToolBar;
     QWidget *centralWidget;
-    QStatusBar *statusBar;
 
     void setupUi(QMainWindow *IpcEmulatorClass)
     {
         if (IpcEmulatorClass->objectName().isEmpty())
             IpcEmulatorClass->setObjectName(QStringLiteral("IpcEmulatorClass"));
         IpcEmulatorClass->resize(600, 400);
-		/*
-        menuBar = new QMenuBar(IpcEmulatorClass);
-        menuBar->setObjectName(QStringLiteral("menuBar"));
-        IpcEmulatorClass->setMenuBar(menuBar);
-        mainToolBar = new QToolBar(IpcEmulatorClass);
-        mainToolBar->setObjectName(QStringLiteral("mainToolBar"));
-        IpcEmulatorClass->addToolBar(mainToolBar);
-      
-        statusBar = new QStatusBar(IpcEmulatorClass);
-        statusBar->setObjectName(QStringLiteral("statusBar"));
-		IpcEmulatorClass->setStatusBar(statusBar);
-		*/
-		centralWidget = new QWidget(IpcEmulatorClass);
-		centralWidget->setObjectName(QStringLiteral("centralWidget"));
-		IpcEmulatorClass->setCentralWidget(centralWidget);
+        centralWidget = new QWidget(IpcEmulatorClass);
+        centralWidget->setObjectName(QStringLiteral("centralWidget"));
+        IpcEmulatorClass->setCentralWidget(centralWidget);
+
         retranslateUi(IpcEmulatorClass);
 
         QMetaObject::connectSlotsByName(IpcEmulatorClass);

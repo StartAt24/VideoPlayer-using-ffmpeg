@@ -22,8 +22,7 @@ void CGiveFrame::run()
 
 		AVPacket* pkt;
 		m_pDJJQue->PopPacket(&pkt);
-
-		
+	
 		if (m_pFFmpeg->ProcessPkt(pkt, &test, &lineSize))
 		{
 			m_pSDLPlay->SDLShow(test, lineSize);

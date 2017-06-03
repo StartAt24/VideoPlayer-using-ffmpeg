@@ -13,19 +13,18 @@ int main(int argc, char *argv[])
 	//QTextCodec::setCodecForLocale(QTextCodec::codecForName("GBK"));
 	AllocConsole();
 	freopen("CONOUT$", "w", stdout);
-	std::cout << "Program Begin---" << std::endl;
-
-
+	std::cout << "DJJ---Program Begin---" << std::endl;
 
 	QApplication a(argc, argv);
 	IpcEmulator w;				//主窗口
 	CLoginDlg  login;			//登陆窗口
 	
 	w.setWindowTitle("模拟相机");
+	w.setWindowIcon(QIcon(":/btnImg/Resources/video.png"));
 	login.setWindowTitle("登陆");
-
+	login.setWindowIcon(QIcon(":/btnImg/Resources/user.png"));
 	w.SetLoginDlg(&login);
-	/*
+	
 	if (login.exec() == QDialog::Accepted)
 	{
 		w.show();
@@ -35,7 +34,7 @@ int main(int argc, char *argv[])
 	{
 		return 0;
 	}
-	*/
+
 	w.show();
 	a.exec();
 	return 0;

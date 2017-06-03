@@ -135,5 +135,14 @@
     <ClInclude Include="GiveFrame.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="WindowCompositionAttribute.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="myapp.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="myapp.ico" />
   </ItemGroup>
 </Project>

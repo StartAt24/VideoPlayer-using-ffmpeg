@@ -2,7 +2,6 @@
 #include "common_def.h"
 #include <stdio.h>
 
-
 #pragma comment(lib, "SDL2main.lib")
 #pragma comment(lib, "SDL2.lib")
 

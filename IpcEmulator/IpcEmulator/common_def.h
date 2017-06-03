@@ -4,7 +4,4 @@
 #define  DJJ_SUCCESS   1
 #define  DJJ_FAILURE   0
 
-
-
-
 #endif

@@ -1,6 +1,6 @@
 #include "DJJQue.h"
 
-#define  MAX_CACHE_PKT   50
+#define  MAX_CACHE_PKT   50			//最大缓存的package数
 
 DJJQue::DJJQue()
 {	
@@ -12,7 +12,7 @@ DJJQue::DJJQue()
 	m_hFrameSem = CreateSemaphore(NULL, 0, 10, NULL);
 	m_hPktSem = CreateSemaphore(NULL, 0, MAX_CACHE_PKT, NULL);
 
-	//初始化事件,自动置位, 出事无出发的匿名事件;
+	//初始化事件,手动置位, 初始触发状态的匿名事件;
 	m_hEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
 }
 
