@@ -26,7 +26,10 @@
    <string>Form</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">#Form{border-image:url(:/btnImg/Resources/bk.jpg);}
+   <string notr="true">#Form{border-image:url(:/btnImg/Resources/bk.jpg);
+	border:1px solid ;
+	border-color: rgb(203, 203, 203);
+}
 </string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
@@ -177,7 +180,8 @@ QPushButton:pressed{
         </size>
        </property>
        <property name="styleSheet">
-        <string notr="true">QPushButton{
+        <string notr="true">
+QPushButton{
 	color:white;
 	border-image:url(:/btnImg/Resources/common_btn_normal_ex.png);
 }
@@ -258,6 +262,14 @@ QPushButton:pressed{
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>ipEdit</tabstop>
+  <tabstop>pwEdit</tabstop>
+  <tabstop>cameraBtn</tabstop>
+  <tabstop>openBtn</tabstop>
+  <tabstop>fileEdit</tabstop>
+  <tabstop>videoBtn</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

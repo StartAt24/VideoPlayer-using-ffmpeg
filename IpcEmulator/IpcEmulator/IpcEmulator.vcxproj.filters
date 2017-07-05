@@ -5,10 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;cxx;c;def</Extensions>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h</Extensions>
-    </Filter>
     <Filter Include="Form Files">
       <UniqueIdentifier>{99349809-55BA-4b9d-BF79-8FDBB0286EB3}</UniqueIdentifier>
       <Extensions>ui</Extensions>
@@ -32,6 +28,10 @@
       <UniqueIdentifier>{eaa0cf99-b637-40df-bd5c-ef1692301b6a}</UniqueIdentifier>
       <Extensions>cpp;moc</Extensions>
       <SourceControlFiles>False</SourceControlFiles>
+    </Filter>
+    <Filter Include="Generated Files\Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -89,10 +89,22 @@
     <ClCompile Include="GeneratedFiles\Release\moc_RcvFrame.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
+    <ClCompile Include="mytitlebar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_mytitlebar.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_mytitlebar.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
+    <ClCompile Include="Mgr.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="ipcemulator.h">
-      <Filter>Header Files</Filter>
+      <Filter>Generated Files\Header Files</Filter>
     </CustomBuild>
     <CustomBuild Include="ipcemulator.ui">
       <Filter>Form Files</Filter>
@@ -101,16 +113,19 @@
       <Filter>Resource Files</Filter>
     </CustomBuild>
     <CustomBuild Include="VideoThread.h">
-      <Filter>Header Files</Filter>
+      <Filter>Generated Files\Header Files</Filter>
     </CustomBuild>
     <CustomBuild Include="logindlg.h">
-      <Filter>Header Files</Filter>
+      <Filter>Generated Files\Header Files</Filter>
     </CustomBuild>
     <CustomBuild Include="logindlg.ui">
       <Filter>Form Files</Filter>
     </CustomBuild>
     <CustomBuild Include="RcvFrame.h">
-      <Filter>Header Files</Filter>
+      <Filter>Generated Files\Header Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="mytitlebar.h">
+      <Filter>Generated Files\Header Files</Filter>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
@@ -118,25 +133,28 @@
       <Filter>Generated Files</Filter>
     </ClInclude>
     <ClInclude Include="Cffmpeg.h">
-      <Filter>Header Files</Filter>
+      <Filter>Generated Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="common_def.h">
-      <Filter>Header Files</Filter>
+      <Filter>Generated Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SDLPlay.h">
-      <Filter>Header Files</Filter>
+      <Filter>Generated Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GeneratedFiles\ui_logindlg.h">
       <Filter>Generated Files</Filter>
     </ClInclude>
     <ClInclude Include="DJJQue.h">
-      <Filter>Header Files</Filter>
+      <Filter>Generated Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GiveFrame.h">
-      <Filter>Header Files</Filter>
+      <Filter>Generated Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="WindowCompositionAttribute.h">
-      <Filter>Header Files</Filter>
+      <Filter>Generated Files\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mgr.h">
+      <Filter>Generated Files\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

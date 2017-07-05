@@ -1,4 +1,4 @@
-#include "Cffmpeg.h"
+ï»¿#include "Cffmpeg.h"
 
 #include "common_def.h"
 #include <stdio.h>
@@ -8,11 +8,12 @@
 #pragma comment(lib, "avcodec.lib")
 #pragma comment(lib, "avformat.lib")
 #pragma comment(lib, "swscale.lib")
-//ÄÚ´æ¶ÔÆë¿ÉÄÜ¶ÔCPUĞ§ÂÊÓĞÓ°Ïì; ¾ßÌå¸ù¾İCPUµÄ´æÈ¡Á£¶È;
+//å†…å­˜å¯¹é½å¯èƒ½å¯¹CPUæ•ˆç‡æœ‰å½±å“; å…·ä½“æ ¹æ®CPUçš„å­˜å–ç²’åº¦;
+#include "mgr.h"
 
-
-Cffmpeg::Cffmpeg()
+Cffmpeg::Cffmpeg(CMgr* mgr)
 {
+	m_pMgr = mgr;
 	ffmpegInit();
 }
 
@@ -36,12 +37,17 @@ int Cffmpeg::ffmpegInit()
 	memset(m_errBuf, 0, sizeof(m_errBuf));
 	m_iVideoindex = -1;
 
+	m_pO_fmt_ctx = NULL;
+	m_pC = NULL;
+	m_OutStream = NULL;
+	m_InStream = NULL;
+
 	av_register_all();
 	avcodec_register_all();
 	avformat_network_init();
 	m_pFormatCtx = avformat_alloc_context();
-	m_pSrcFrame = av_frame_alloc();				//ÉêÇëÒ»¸öAVFrame ²¢×öÒ»Ğ©³õÊ¼»¯¹¤×÷
-	m_pDstFrame = av_frame_alloc();				//ÉêÇëÒ»¸öAVFrame ²¢×öÒ»Ğ©³õÊ¼»¯¹¤×÷
+	m_pSrcFrame = av_frame_alloc();				//ç”³è¯·ä¸€ä¸ªAVFrame å¹¶åšä¸€äº›åˆå§‹åŒ–å·¥ä½œ
+	m_pDstFrame = av_frame_alloc();				//ç”³è¯·ä¸€ä¸ªAVFrame å¹¶åšä¸€äº›åˆå§‹åŒ–å·¥ä½œ
 	m_pPacket = (AVPacket *)av_malloc(sizeof(AVPacket));
 	return DJJ_SUCCESS;
 }
@@ -57,22 +63,28 @@ void Cffmpeg::ffmpegClose()
 	if (m_pImg_convert_ctx)
 		sws_freeContext(m_pImg_convert_ctx);
 
+	//-----å†™æ–‡ä»¶çš„é‡Šæ”¾æµç¨‹
 	/*
-	if (m_pPacket)
-		av_free_packet(m_pPacket);
+	avcodec_close(m_pO_fmt_ctx->streams[0]->codec);
+	av_freep(&m_pO_fmt_ctx->streams[0]->codec);
+	av_freep(&m_pO_fmt_ctx->streams[0]);
+
+	avio_close(m_pO_fmt_ctx->pb);
+	av_free(m_pO_fmt_ctx);
 	*/
+	//avformat_free_context(m_pO_fmt_ctx);
 }
 
 int Cffmpeg::OpenVideoFile(QString filepath)
 {
 	int ret, i;
-	QByteArray qbFilepath = filepath.toLatin1();
+ 	QByteArray qbFilepath = filepath.toLatin1();
 	char	*szFilepath = qbFilepath.data();
-
-	//ffmpegClose();
 
 	AVDictionary* options = NULL;
 	av_dict_set(&options, "rtsp_transport", "udp", 0);
+	av_dict_set(&options, "max_delay", "3000000", 0);
+	av_dict_set(&options, "stimeout", "2000000", 0);
 
 	ret = avformat_open_input(&m_pFormatCtx, szFilepath, NULL, &options);
 	if(0 != ret)
@@ -93,18 +105,11 @@ int Cffmpeg::OpenVideoFile(QString filepath)
 
 	//Output Info----------------------------
 	printf("------------------------File Information-------------------------\n");
-	av_dump_format(m_pFormatCtx, 0, szFilepath, 0);			   //»ñÈ¡ÎÄ¼şµÄĞÅÏ¢µ½ AVFormatContext
+	av_dump_format(m_pFormatCtx, 0, szFilepath, 0);			   //è·å–æ–‡ä»¶çš„ä¿¡æ¯åˆ° AVFormatContext
 	printf("------------------------------END--------------------------------\n");
 
-	return DJJ_SUCCESS;
-}
-
-int Cffmpeg::SwsVideo(int dstWidth/* =0 */, int dstHeight/* =0 */, AVPixelFormat pix_fmt /* = AV_PIX_FMT_YUV420P */)
-{
-	int		i, videoindex, ret;
-	uint8_t		*out_buffer;
-
 	m_iVideoindex = -1;
+	//nb_streamsä»£è¡¨æœ‰å‡ è·¯è§†é¢‘,ä¸€èˆ¬æ˜¯2è·¯ï¼šå³éŸ³é¢‘å’Œè§†é¢‘ï¼Œé¡ºåºä¸ä¸€å®šã€‚
 	for (i = 0; i < m_pFormatCtx->nb_streams; i++)
 	{
 		if (m_pFormatCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
@@ -118,15 +123,25 @@ int Cffmpeg::SwsVideo(int dstWidth/* =0 */, int dstHeight/* =0 */, AVPixelFormat
 		printf("Can not find a video stream.\n");
 		return DJJ_FAILURE;
 	}
+
+	return DJJ_SUCCESS;
+}
+
+int Cffmpeg::SwsVideo(int dstWidth/* =0 */, int dstHeight/* =0 */, AVPixelFormat pix_fmt /* = AV_PIX_FMT_YUV420P */)
+{
+	int		i, ret;
+	uint8_t		*out_buffer;
+
 	m_pCodecCtx = m_pFormatCtx->streams[m_iVideoindex]->codec;
-	m_pCodec = avcodec_find_decoder(m_pCodecCtx->codec_id);  //Í¨¹ıcode ID²éÕÒÒ»¸öÒÑ¾­×¢²áµÄÒôÊÓÆµ±àÂëÆ÷;
+	m_pCodec = avcodec_find_decoder(m_pCodecCtx->codec_id);  //é€šè¿‡code IDæŸ¥æ‰¾ä¸€ä¸ªå·²ç»æ³¨å†Œçš„éŸ³è§†é¢‘ç¼–ç å™¨;
+	//m_pCodec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
 	if (m_pCodec == NULL)
 	{
 		printf("Codec not found!\n");
 		return DJJ_FAILURE;
 	}
 
-	ret = avcodec_open2(m_pCodecCtx, m_pCodec, NULL);	//Ê¹ÓÃ¸ø¶¨µÄAvCodec³õÊ¼»¯AVCodecContext
+	ret = avcodec_open2(m_pCodecCtx, m_pCodec, NULL);	//ä½¿ç”¨ç»™å®šçš„AvCodecåˆå§‹åŒ–AVCodecContext
 	if (ret < 0)		  
 	{
 		av_strerror(ret, m_errBuf, sizeof(m_errBuf));
@@ -135,34 +150,39 @@ int Cffmpeg::SwsVideo(int dstWidth/* =0 */, int dstHeight/* =0 */, AVPixelFormat
 		return DJJ_FAILURE;
 	}
 
-	//avpicture_get_size ½âÂëÖ®ºóÒ»Ö¡Í¼ÏñµÄ´óĞ¡;
-	//av_malloc·â×°ÁËmalloc²¢×öÁËÒ»Ğ©°²È«ĞÔ²Ù×÷;
+	//avpicture_get_size è§£ç ä¹‹åä¸€å¸§å›¾åƒçš„å¤§å°;
+	//av_mallocå°è£…äº†mallocå¹¶åšäº†ä¸€äº›å®‰å…¨æ€§æ“ä½œ;
 	out_buffer = (uint8_t *)av_malloc(avpicture_get_size(pix_fmt, m_pCodecCtx->width, m_pCodecCtx->height));
 
-	//avpicture_fill ½«pFrameYUV °´ÕÕ AV_PIX_FMT_YUV420PµÄ¸ñÊ½¡°¹ØÁª¡±µ½ out_buffer, Êı¾İ×ª»»ÍêÖ®ºó Ò²×Ô¶¯±£´æµ½ÁËout_buffer;
+	//avpicture_fill å°†pFrameYUV æŒ‰ç…§ AV_PIX_FMT_YUV420Pçš„æ ¼å¼â€œå…³è”â€åˆ° out_buffer, æ•°æ®è½¬æ¢å®Œä¹‹å ä¹Ÿè‡ªåŠ¨ä¿å­˜åˆ°äº†out_buffer;
 	avpicture_fill((AVPicture *)m_pDstFrame, out_buffer, pix_fmt, m_pCodecCtx->width, m_pCodecCtx->height);
 
-	//»ñµÃ²¢³õÊ¼»¯Ò»¸öSwsContext½á¹¹Ìå£¬ÕâÊÇÒ»¸öËõ·Å¼°¸ñÊ½×ª»»µÄº¯Êı ÕâÀïµÄËõ·Å±ÈÀıÎª1£º1
+	//è·å¾—å¹¶åˆå§‹åŒ–ä¸€ä¸ªSwsContextç»“æ„ä½“ï¼Œè¿™æ˜¯ä¸€ä¸ªç¼©æ”¾åŠæ ¼å¼è½¬æ¢çš„å‡½æ•° è¿™é‡Œçš„ç¼©æ”¾æ¯”ä¾‹ä¸º1ï¼š1
+	
 	m_pImg_convert_ctx = sws_getContext(m_pCodecCtx->width, m_pCodecCtx->height, m_pCodecCtx->pix_fmt,
 		(dstWidth == 0 ? m_pCodecCtx->width:dstWidth), (dstHeight == 0? m_pCodecCtx->height:dstHeight), 
 		pix_fmt, SWS_BICUBIC, NULL, NULL, NULL);
-
+	/*
+	//æµ‹è¯•H265çš„æ’­æ”¾è½¬ç ;
+	m_pImg_convert_ctx = sws_getContext(m_pCodecCtx->width, m_pCodecCtx->height, AV_PIX_FMT_YUV420P,
+		(dstWidth == 0 ? m_pCodecCtx->width : dstWidth), (dstHeight == 0 ? m_pCodecCtx->height : dstHeight),
+		pix_fmt, SWS_BICUBIC, NULL, NULL, NULL);
+	*/
 	return DJJ_SUCCESS;
 }
-
 
 int Cffmpeg::Decode(AVFrame* pOutFrame)
 {
 	int ret, got_picture=0;
 	
-	if (av_read_frame(m_pFormatCtx, m_pPacket) >= 0)			//´ÓÔ´ÎÄ¼şÈİÆ÷ÖĞ¶ÁÈ¡Ò»¸öAVPacketÊı¾İ°ü;  £¨ÒôÆµ¿ÉÄÜ°üº¬¶àÖ¡£©
+	if (av_read_frame(m_pFormatCtx, m_pPacket) >= 0)			//ä»æºæ–‡ä»¶å®¹å™¨ä¸­è¯»å–ä¸€ä¸ªAVPacketæ•°æ®åŒ…;  ï¼ˆéŸ³é¢‘å¯èƒ½åŒ…å«å¤šå¸§ï¼‰
 	{
-		if (m_pPacket->stream_index == m_iVideoindex)				//Èç¹ûÊÇÊÓÆµÖ¡µÄ»°£¬½øĞĞ½âÂë
+		if (m_pPacket->stream_index == m_iVideoindex)				//å¦‚æœæ˜¯è§†é¢‘å¸§çš„è¯ï¼Œè¿›è¡Œè§£ç 
 		{
 			/**avcodec_decode_video2
-			**½âÂëÊÓÆµÁ÷AVPacket
-			**Ê¹ÓÃav_read_frame¶ÁÈ¡Ã½ÌåÁ÷ºóĞèÒª½øĞĞÅĞ¶Ï£¬Èç¹ûÎªÊÓÆµÁ÷Ôòµ÷ÓÃ¸Ãº¯Êı½âÂë
-			**·µ»Øgot_picture>0Ê±£¬±íÊ¾½âÂëµÃµ½AVFrame *pFrame, Æäºó¿ÉÒÔ¶Ôpicture½øĞĞ´¦Àí;
+			**è§£ç è§†é¢‘æµAVPacket
+			**ä½¿ç”¨av_read_frameè¯»å–åª’ä½“æµåéœ€è¦è¿›è¡Œåˆ¤æ–­ï¼Œå¦‚æœä¸ºè§†é¢‘æµåˆ™è°ƒç”¨è¯¥å‡½æ•°è§£ç 
+			**è¿”å›got_picture>0æ—¶ï¼Œè¡¨ç¤ºè§£ç å¾—åˆ°AVFrame *pFrame, å…¶åå¯ä»¥å¯¹pictureè¿›è¡Œå¤„ç†;
 			**/
 			ret = avcodec_decode_video2(m_pCodecCtx, m_pSrcFrame, &got_picture, m_pPacket);
 
@@ -175,13 +195,13 @@ int Cffmpeg::Decode(AVFrame* pOutFrame)
 
 			if (got_picture)
 			{
-				//Í¼Æ¬ÏñËØ×ª»»¡¢À­Éìº¯Êı£» 
+				//å›¾ç‰‡åƒç´ è½¬æ¢ã€æ‹‰ä¼¸å‡½æ•°ï¼› 
 				sws_scale(m_pImg_convert_ctx, (const uint8_t* const*)m_pSrcFrame->data, m_pSrcFrame->linesize, 0,
 					m_pCodecCtx->height, m_pDstFrame->data, m_pDstFrame->linesize);
 				memcpy(pOutFrame, m_pDstFrame, sizeof(AVFrame));
 			}
 		}
-		av_free_packet(m_pPacket); //Ã¿´Î¶ÁÈ¡packetÖ®Ç°ĞèÒªÏÈfree;
+		av_free_packet(m_pPacket); //æ¯æ¬¡è¯»å–packetä¹‹å‰éœ€è¦å…ˆfree;
 	}
 
 	if (got_picture)
@@ -190,18 +210,17 @@ int Cffmpeg::Decode(AVFrame* pOutFrame)
 		return DJJ_FAILURE;
 }
 
-
 int Cffmpeg::DecodeVideo(const char* filepath)
 {
-	AVFormatContext *pFormatCtx = NULL; //±£´æĞèÒª¶ÁÈëµÄÎÄ¼şµÄ¸ñÊ½ĞÅÏ¢,ÈçÁ÷µÄ¸öÊıºÍÊıÁ¿
+	AVFormatContext *pFormatCtx = NULL; //ä¿å­˜éœ€è¦è¯»å…¥çš„æ–‡ä»¶çš„æ ¼å¼ä¿¡æ¯,å¦‚æµçš„ä¸ªæ•°å’Œæ•°é‡
 	int				i, videoindex;
-	AVCodecContext  *pCodecCtx;			//±£´æÏàÓ¦Á÷µÄÏêÏ¸±àÂëĞÅÏ¢,ÈçÊÓÆµµÄ¿í¡¢¸ß¡¢±àÂëÀàĞÍ
-	AVCodec			*pCodec;			//ÕæÕıµÄ±à½âÂëÆ÷£¬ÆäÖĞÓĞ±à½âÂëĞèÒªÓÃµ½µÄº¯Êı
+	AVCodecContext  *pCodecCtx;			//ä¿å­˜ç›¸åº”æµçš„è¯¦ç»†ç¼–ç ä¿¡æ¯,å¦‚è§†é¢‘çš„å®½ã€é«˜ã€ç¼–ç ç±»å‹
+	AVCodec			*pCodec;			//çœŸæ­£çš„ç¼–è§£ç å™¨ï¼Œå…¶ä¸­æœ‰ç¼–è§£ç éœ€è¦ç”¨åˆ°çš„å‡½æ•°
 
-	//ÓÃÓÚ±£´æÊı¾İÖ¡µÄÊı¾İ½á¹¹ÕâÀïµÄÁ½¸öÖ¡·Ö±ğÊÇ±£´æÑÕÉ«×ª»»Ç°ºóµÄÁ½Ö¡Í¼Ïñ
-	AVFrame *pFrame, *pFrameYUV;		//½âÂëºóµÄÊı¾İ¼°×ª»»Ö®ºóµÄÊı¾İ;
+	//ç”¨äºä¿å­˜æ•°æ®å¸§çš„æ•°æ®ç»“æ„è¿™é‡Œçš„ä¸¤ä¸ªå¸§åˆ†åˆ«æ˜¯ä¿å­˜é¢œè‰²è½¬æ¢å‰åçš„ä¸¤å¸§å›¾åƒ
+	AVFrame *pFrame, *pFrameYUV;		//è§£ç åçš„æ•°æ®åŠè½¬æ¢ä¹‹åçš„æ•°æ®;
 	uint8_t *out_buffer;
-	AVPacket *packet;					//½âÎöÎÄ¼şÊ±»á½«Òô/ÊÓÆµÖ¡¶ÁÈëµ½packetÖĞ
+	AVPacket *packet;					//è§£ææ–‡ä»¶æ—¶ä¼šå°†éŸ³/è§†é¢‘å¸§è¯»å…¥åˆ°packetä¸­
 	int  y_size;
 	int  ret, got_picture;
 	struct SwsContext *img_convert_ctx;
@@ -210,12 +229,12 @@ int Cffmpeg::DecodeVideo(const char* filepath)
 
 	av_register_all();
 	avformat_network_init();
-	pFormatCtx = avformat_alloc_context(); //ÉêÇëÒ»¸öAVFormatContext½á¹¹Ìå²¢³õÊ¼»¯;
+	pFormatCtx = avformat_alloc_context(); //ç”³è¯·ä¸€ä¸ªAVFormatContextç»“æ„ä½“å¹¶åˆå§‹åŒ–;
 
-	/*avformat_open_input ¹¦ÄÜ£º ´ò¿ªÒ»¸öÎÄ¼ş£¬¶ÁÈ¡ÎÄ¼şÍ·
-	**ÊäÈëÊä³ö½á¹¹ÌåAVIOContextµÄ³õÊ¼»¯;ÊäÈëÊı¾İĞ­ÒéµÄÊ¶±ğ£¨RTMP »òÕß file£©;
-	**Ê¹ÓÃ»ñµÃ×î¸ß·ÖµÄÎÄ¼şĞ­Òé¶ÔÓ¦µÄURLProtocol,Í¨¹ıº¯ÊıÖ¸ÕëµÄ·½Ê½£¬ÓëFFMPEGÁ´½Ó(·Ç×¨ÒµÓÃ´Ê)£»
-	**µ÷ÓÃ¸ÃURLProtocolµÄº¯Êı½øĞĞopen,readµÈ²Ù×÷£»
+	/*avformat_open_input åŠŸèƒ½ï¼š æ‰“å¼€ä¸€ä¸ªæ–‡ä»¶ï¼Œè¯»å–æ–‡ä»¶å¤´
+	**è¾“å…¥è¾“å‡ºç»“æ„ä½“AVIOContextçš„åˆå§‹åŒ–;è¾“å…¥æ•°æ®åè®®çš„è¯†åˆ«ï¼ˆRTMP æˆ–è€… fileï¼‰;
+	**ä½¿ç”¨è·å¾—æœ€é«˜åˆ†çš„æ–‡ä»¶åè®®å¯¹åº”çš„URLProtocol,é€šè¿‡å‡½æ•°æŒ‡é’ˆçš„æ–¹å¼ï¼Œä¸FFMPEGé“¾æ¥(éä¸“ä¸šç”¨è¯)ï¼›
+	**è°ƒç”¨è¯¥URLProtocolçš„å‡½æ•°è¿›è¡Œopen,readç­‰æ“ä½œï¼›
 	**/
 	if (avformat_open_input(&pFormatCtx, filepath, NULL, NULL) != 0)
 	{
@@ -224,7 +243,7 @@ int Cffmpeg::DecodeVideo(const char* filepath)
 	}
 
 	/*avformat_find_stream_info
-	  ¶ÁÈ¡Ò»²¿·ÖÒôÆµÊı¾İ²¢»ñµÃÒ»Ğ©Ïà¹ØµÄĞÅÏ¢£»
+	  è¯»å–ä¸€éƒ¨åˆ†éŸ³é¢‘æ•°æ®å¹¶è·å¾—ä¸€äº›ç›¸å…³çš„ä¿¡æ¯ï¼›
 	*/
 	if (avformat_find_stream_info(pFormatCtx, NULL) < 0)
 	{
@@ -250,37 +269,37 @@ int Cffmpeg::DecodeVideo(const char* filepath)
 	}
 
 	pCodecCtx = pFormatCtx->streams[videoindex]->codec;
-	pCodec = avcodec_find_decoder(pCodecCtx->codec_id);  //Í¨¹ıcode ID²éÕÒÒ»¸öÒÑ¾­×¢²áµÄÒôÊÓÆµ±àÂëÆ÷;
+	pCodec = avcodec_find_decoder(pCodecCtx->codec_id);  //é€šè¿‡code IDæŸ¥æ‰¾ä¸€ä¸ªå·²ç»æ³¨å†Œçš„éŸ³è§†é¢‘ç¼–ç å™¨;
 	if (pCodec == NULL)
 	{
 		printf("Codec not found.\n");
 		return DJJ_FAILURE;
 	}
-	if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0)		  //Ê¹ÓÃ¸ø¶¨µÄAvCodec³õÊ¼»¯AVCodecContext
+	if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0)		  //ä½¿ç”¨ç»™å®šçš„AvCodecåˆå§‹åŒ–AVCodecContext
 	{
 		printf("Could not open codec.\n");
 		return DJJ_FAILURE;
 	}
 
-	pFrame = av_frame_alloc();							  //ÉêÇëÒ»¸öAVFrame ²¢×öÒ»Ğ©³õÊ¼»¯¹¤×÷
+	pFrame = av_frame_alloc();							  //ç”³è¯·ä¸€ä¸ªAVFrame å¹¶åšä¸€äº›åˆå§‹åŒ–å·¥ä½œ
 	pFrameYUV = av_frame_alloc();
 
 
 	
-	//avpicture_get_size ½âÂëÖ®ºóÒ»Ö¡Í¼ÏñµÄ´óĞ¡;
-	//av_malloc·â×°ÁËmalloc²¢×öÁËÒ»Ğ©°²È«ĞÔ²Ù×÷;
+	//avpicture_get_size è§£ç ä¹‹åä¸€å¸§å›¾åƒçš„å¤§å°;
+	//av_mallocå°è£…äº†mallocå¹¶åšäº†ä¸€äº›å®‰å…¨æ€§æ“ä½œ;
 	out_buffer = (uint8_t *)av_malloc(avpicture_get_size(AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height));
 
-	//avpicture_fill ½«pFrameYUV °´ÕÕ AV_PIX_FMT_YUV420PµÄ¸ñÊ½¡°¹ØÁª¡±µ½ out_buffer, Êı¾İ×ª»»ÍêÖ®ºó Ò²×Ô¶¯±£´æµ½ÁËout_buffer;
+	//avpicture_fill å°†pFrameYUV æŒ‰ç…§ AV_PIX_FMT_YUV420Pçš„æ ¼å¼â€œå…³è”â€åˆ° out_buffer, æ•°æ®è½¬æ¢å®Œä¹‹å ä¹Ÿè‡ªåŠ¨ä¿å­˜åˆ°äº†out_buffer;
 	avpicture_fill((AVPicture *)pFrameYUV, out_buffer, AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height);
 	packet = (AVPacket *)av_malloc(sizeof(AVPacket));
 
 	//Output Info----------------------------
 	printf("------------------------File Information-------------------------\n");
-	av_dump_format(pFormatCtx, 0, filepath, 0);			   //»ñÈ¡ÎÄ¼şµÄĞÅÏ¢µ½ AVFormatContext
+	av_dump_format(pFormatCtx, 0, filepath, 0);			   //è·å–æ–‡ä»¶çš„ä¿¡æ¯åˆ° AVFormatContext
 	printf("------------------------------END--------------------------------\n");
 
-	//»ñµÃ²¢³õÊ¼»¯Ò»¸öSwsContext½á¹¹Ìå£¬ÕâÊÇÒ»¸öËõ·Å¼°¸ñÊ½×ª»»µÄº¯Êı ÕâÀïµÄËõ·Å±ÈÀıÎª1£º1
+	//è·å¾—å¹¶åˆå§‹åŒ–ä¸€ä¸ªSwsContextç»“æ„ä½“ï¼Œè¿™æ˜¯ä¸€ä¸ªç¼©æ”¾åŠæ ¼å¼è½¬æ¢çš„å‡½æ•° è¿™é‡Œçš„ç¼©æ”¾æ¯”ä¾‹ä¸º1ï¼š1
 	img_convert_ctx = sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt,
 		pCodecCtx->width, pCodecCtx->height, AV_PIX_FMT_YUV420P, SWS_BICUBIC, NULL, NULL, NULL);
 
@@ -290,14 +309,14 @@ int Cffmpeg::DecodeVideo(const char* filepath)
 
 
 
-	while (av_read_frame(pFormatCtx, packet) >= 0)			//´ÓÔ´ÎÄ¼şÈİÆ÷ÖĞ¶ÁÈ¡Ò»¸öAVPacketÊı¾İ°ü;  £¨ÒôÆµ¿ÉÄÜ°üº¬¶àÖ¡£©
+	while (av_read_frame(pFormatCtx, packet) >= 0)			//ä»æºæ–‡ä»¶å®¹å™¨ä¸­è¯»å–ä¸€ä¸ªAVPacketæ•°æ®åŒ…;  ï¼ˆéŸ³é¢‘å¯èƒ½åŒ…å«å¤šå¸§ï¼‰
 	{
-		if (packet->stream_index == videoindex)				//Èç¹ûÊÇÊÓÆµÖ¡µÄ»°£¬½øĞĞ½âÂë
+		if (packet->stream_index == videoindex)				//å¦‚æœæ˜¯è§†é¢‘å¸§çš„è¯ï¼Œè¿›è¡Œè§£ç 
 		{
 			/**avcodec_decode_video2
-			**½âÂëÊÓÆµÁ÷AVPacket
-			**Ê¹ÓÃav_read_frame¶ÁÈ¡Ã½ÌåÁ÷ºóĞèÒª½øĞĞÅĞ¶Ï£¬Èç¹ûÎªÊÓÆµÁ÷Ôòµ÷ÓÃ¸Ãº¯Êı½âÂë
-			**·µ»Øgot_picture>0Ê±£¬±íÊ¾½âÂëµÃµ½AVFrame *pFrame, Æäºó¿ÉÒÔ¶Ôpicture½øĞĞ´¦Àí;
+			**è§£ç è§†é¢‘æµAVPacket
+			**ä½¿ç”¨av_read_frameè¯»å–åª’ä½“æµåéœ€è¦è¿›è¡Œåˆ¤æ–­ï¼Œå¦‚æœä¸ºè§†é¢‘æµåˆ™è°ƒç”¨è¯¥å‡½æ•°è§£ç 
+			**è¿”å›got_picture>0æ—¶ï¼Œè¡¨ç¤ºè§£ç å¾—åˆ°AVFrame *pFrame, å…¶åå¯ä»¥å¯¹pictureè¿›è¡Œå¤„ç†;
 			**/
 			ret = avcodec_decode_video2(pCodecCtx, pFrame, &got_picture, packet); 
 
@@ -309,12 +328,12 @@ int Cffmpeg::DecodeVideo(const char* filepath)
 
 			if (got_picture)
 			{
-				//Í¼Æ¬ÏñËØ×ª»»¡¢À­Éìº¯Êı£» 
+				//å›¾ç‰‡åƒç´ è½¬æ¢ã€æ‹‰ä¼¸å‡½æ•°ï¼› 
 				sws_scale(img_convert_ctx, (const uint8_t* const*)pFrame->data, pFrame->linesize, 0,
 					pCodecCtx->height, pFrameYUV->data, pFrameYUV->linesize);
 			}
 		}
-		av_free_packet(packet); //Ã¿´Î¶ÁÈ¡packetÖ®Ç°ĞèÒªÏÈfree;
+		av_free_packet(packet); //æ¯æ¬¡è¯»å–packetä¹‹å‰éœ€è¦å…ˆfree;
 	}
 
 	//flush decoder
@@ -347,15 +366,15 @@ int Cffmpeg::ReadPkt(AVPacket** pOutPkt)
 	int ret;
 	ret = av_read_frame(m_pFormatCtx, *pOutPkt);
 	
- 	if (ret >= 0)			//´ÓÔ´ÎÄ¼şÈİÆ÷ÖĞ¶ÁÈ¡Ò»¸öAVPacketÊı¾İ°ü;  £¨ÒôÆµ¿ÉÄÜ°üº¬¶àÖ¡£©,Õâ¸öÊ±ºòÎªAVpacketµÄÊı¾İ·ÖÅäÄÚ´æ
+ 	if (ret >= 0)			//ä»æºæ–‡ä»¶å®¹å™¨ä¸­è¯»å–ä¸€ä¸ªAVPacketæ•°æ®åŒ…;  ï¼ˆéŸ³é¢‘å¯èƒ½åŒ…å«å¤šå¸§ï¼‰,è¿™ä¸ªæ—¶å€™ä¸ºAVpacketçš„æ•°æ®åˆ†é…å†…å­˜
 	{
-		if ((*pOutPkt)->stream_index == m_iVideoindex)				//Èç¹ûÊÇÊÓÆµÖ¡µÄ»°£¬½øĞĞ½âÂë
+		if ((*pOutPkt)->stream_index == m_iVideoindex)				//å¦‚æœæ˜¯è§†é¢‘å¸§çš„è¯ï¼Œè¿›è¡Œè§£ç -->processPkt
 		{ 
-		//	printf("i :%d ; ret : %d\n", i++, ret);
 			return DJJ_SUCCESS;
 		}
-		//av_packet_unref(pkt); //Ã¿´Î¶ÁÈ¡packetÖ®Ç°ĞèÒªÏÈfree;
+		//av_packet_unref(pkt); //æ¯æ¬¡è¯»å–packetä¹‹å‰éœ€è¦å…ˆfree;
 	}
+
 	return DJJ_FAILURE;
 }
 
@@ -364,9 +383,10 @@ int Cffmpeg::ProcessPkt(AVPacket* pPkt, uint8_t** out, int* linesize)
 	int ret, got_picture = 0;
 	AVFrame* testFrame;
 	testFrame = av_frame_alloc();
+	clock_t  startTime, endTime;
+	startTime = clock();
 
-	ret = avcodec_decode_video2(m_pCodecCtx, testFrame, &got_picture, pPkt);
-	
+	ret = avcodec_decode_video2(m_pCodecCtx, testFrame, &got_picture, pPkt); //è¿™å¥è¯è§¦å‘äº†ç©ºç™½ï¼ï¼
 	if (ret < 0)
 	{
 		av_strerror(ret, m_errBuf, sizeof(m_errBuf));
@@ -376,8 +396,7 @@ int Cffmpeg::ProcessPkt(AVPacket* pPkt, uint8_t** out, int* linesize)
 
 	if (got_picture)
 	{
-		//Í¼Æ¬ÏñËØ×ª»»¡¢À­Éìº¯Êı£» 
-		
+		//å›¾ç‰‡åƒç´ è½¬æ¢ã€æ‹‰ä¼¸å‡½æ•°ï¼› 	
 		sws_scale(m_pImg_convert_ctx, (const uint8_t* const*)testFrame->data, testFrame->linesize, 0,
 			m_pCodecCtx->height, m_pDstFrame->data, m_pDstFrame->linesize);
 		//memcpy(pOutFrame, m_pDstFrame, sizeof(AVFrame));
@@ -392,7 +411,391 @@ int Cffmpeg::ProcessPkt(AVPacket* pPkt, uint8_t** out, int* linesize)
 	av_frame_free(&testFrame);
 
 	if (got_picture)
+	{
+		endTime = clock();
+		m_pMgr->m_iCodecCost = endTime - startTime;
 		return DJJ_SUCCESS;
+	}
 	else
 		return DJJ_FAILURE;
+}
+
+int Cffmpeg::SaveVideo()
+{
+	AVFormatContext *i_fmt_ctx;
+	AVStream *i_video_stream;
+
+	AVFormatContext *o_fmt_ctx;
+	AVStream *o_video_stream;
+
+	avcodec_register_all();
+	av_register_all();
+	avformat_network_init();
+
+	/* should set to NULL so that avformat_open_input() allocate a new one */
+	i_fmt_ctx = NULL;
+	char rtspUrl[] = "rtsp://admin:admin123@10.255.251.238";
+	const char *filename = "123.mp4";
+
+	AVDictionary* options = NULL;
+	av_dict_set(&options, "rtsp_transport", "udp", 0);
+	//av_dict_set(&options, "max_delay", "5000000", 0);
+
+	if (avformat_open_input(&i_fmt_ctx, rtspUrl, NULL, NULL) != 0)
+	{
+		fprintf(stderr, "could not open input file\n");
+		return -1;
+	}
+
+	if (avformat_find_stream_info(i_fmt_ctx, NULL)<0)
+	{
+		fprintf(stderr, "could not find stream info\n");
+		return -1;
+	}
+
+	//av_dump_format(i_fmt_ctx, 0, argv[1], 0);
+
+	/* find first video stream */
+	for (unsigned i = 0; i<i_fmt_ctx->nb_streams; i++)
+	{
+		if (i_fmt_ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+		{
+			i_video_stream = i_fmt_ctx->streams[i];
+			break;
+		}
+	}
+	if (i_video_stream == NULL)
+	{
+		fprintf(stderr, "didn't find any video stream\n");
+		return -1;
+	}
+
+	//åˆå§‹åŒ–è¾“å‡ºç æµçš„AVFormatContext;
+	avformat_alloc_output_context2(&o_fmt_ctx, NULL, NULL, filename);
+
+	/*
+	* since all input files are supposed to be identical (framerate, dimension, color format, ...)
+	* we can safely set output codec values from first input file
+	*/
+
+	//åˆ›å»ºè¾“å‡ºç æµçš„AVStream
+	o_video_stream = avformat_new_stream(o_fmt_ctx, NULL);
+	if (o_video_stream == NULL)
+	{
+		printf("avformat_new_stream failed.\n");
+		return DJJ_FAILURE;
+	}
+
+
+	int ret;
+	ret = avcodec_copy_context(o_video_stream->codec, i_video_stream->codec);
+	if (ret < 0)
+	{
+		printf("Failed to copy context from input to output stream codec context.\n");
+		//Close input
+		//if (m_pO_fmt_ctx && !(ofmt->flags & AVFMT_NOFILE))
+		//	avio_close(m_pO_fmt_ctx->pb);
+		//avformat_free_context(m_pO_fmt_ctx);
+		//if (ret < 0 && ret != AVERROR_EOF)
+		{
+			printf("Error occured.\n");
+			return DJJ_FAILURE;
+		}
+	}
+	/*
+	{
+		AVCodecContext *c;
+		c = o_video_stream->codec;
+		c->bit_rate = 400000;
+		c->codec_id = i_video_stream->codec->codec_id;
+		//c->codec_id = AV_CODEC_ID_HEVC;
+
+		c->codec_type = i_video_stream->codec->codec_type;
+		c->time_base.num = i_video_stream->time_base.num;
+		c->time_base.den = i_video_stream->time_base.den;
+		fprintf(stderr, "time_base.num = %d time_base.den = %d\n", c->time_base.num, c->time_base.den);
+		c->width = i_video_stream->codec->width;
+		c->height = i_video_stream->codec->height;
+		c->pix_fmt = i_video_stream->codec->pix_fmt;
+		printf("%d %d %d", c->width, c->height, c->pix_fmt);
+		c->flags = i_video_stream->codec->flags;
+		c->flags |= CODEC_FLAG_GLOBAL_HEADER;
+		c->me_range = i_video_stream->codec->me_range;
+		c->max_qdiff = i_video_stream->codec->max_qdiff;
+
+		c->qmin = i_video_stream->codec->qmin;	//æœ€å°é‡åŒ–å™¨
+		c->qmax = i_video_stream->codec->qmax;  //æœ€å¤§é‡åŒ–å™¨
+
+		c->qcompress = i_video_stream->codec->qcompress;
+	}
+	*/
+
+	//æ‰“å¼€è¾“å‡ºæ–‡ä»¶
+		if (avio_open(&o_fmt_ctx->pb, filename, AVIO_FLAG_READ_WRITE)<0)
+		{
+			printf("Failed to open output file! \n");
+			return DJJ_FAILURE;
+		}
+
+	//å†™å¤´æ–‡ä»¶ï¼ˆå¯¹äºæŸäº›æ²¡æœ‰å¤´æ–‡ä»¶çš„å°è£…æ ¼å¼ ä¸éœ€è¦æ­¤å‡½æ•°ï¼‰
+	ret = avformat_write_header(o_fmt_ctx, NULL);
+	if (ret < 0)
+	{
+		printf("write header failed.\n");
+	}
+
+	int last_pts = 0;
+	int last_dts = 0;
+
+	int64_t pts, dts;
+	int frameCount = 1000;
+	while (1)
+	{
+		AVPacket i_pkt;
+		av_init_packet(&i_pkt);
+		i_pkt.size = 0;
+		i_pkt.data = NULL;
+		if (av_read_frame(i_fmt_ctx, &i_pkt) <0)
+			break;
+		/*
+		* pts and dts should increase monotonically
+		* pts should be >= dts
+		*/
+		i_pkt.pts = av_rescale_q_rnd(i_pkt.pts, i_video_stream->time_base, o_video_stream->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+		i_pkt.dts = av_rescale_q_rnd(i_pkt.dts, i_video_stream->time_base, o_video_stream->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+		//printf("pts %d dts %d base %d\n",pkt.pts,pkt.dts, in_stream->time_base);
+		i_pkt.duration = av_rescale_q(i_pkt.duration, i_video_stream->time_base, o_video_stream->time_base);
+
+		i_pkt.pos = -1;;
+
+		//printf("%lld %lld\n", i_pkt.pts, i_pkt.dts); 
+		static int num = 1;
+		printf("frame %d\n", num++);
+
+		//å°†ç¼–ç åçš„è§†é¢‘ç æµå†™å…¥æ–‡ä»¶;
+		av_interleaved_write_frame(o_fmt_ctx, &i_pkt);
+
+		//av_packet_unref(&i_pkt);
+		//av_free_packet(&i_pkt); 
+		//av_init_packet(&i_pkt); 
+		frameCount--;
+		if(frameCount <= 0)
+			break;
+	}
+	last_dts += dts;
+	last_pts += pts;
+
+	avformat_close_input(&i_fmt_ctx);
+
+	//å†™æ–‡ä»¶å°¾(å¯¹äºæ²¡æœ‰æ–‡ä»¶å¤´çš„å°è£…æ ¼å¼ï¼Œä¸éœ€è¦è¿™ä¸€æ­¥)
+	av_write_trailer(o_fmt_ctx);
+
+	avcodec_close(o_fmt_ctx->streams[0]->codec);
+	av_freep(&o_fmt_ctx->streams[0]->codec);
+	av_freep(&o_fmt_ctx->streams[0]);
+
+	avio_close(o_fmt_ctx->pb);
+	av_free(o_fmt_ctx);
+
+	return DJJ_SUCCESS;
+}
+
+int Cffmpeg::SavePre(QString saveFilepath)
+{
+	int ret, i, iError;
+	AVOutputFormat *ofmt = NULL;
+
+	QByteArray qout_filename = saveFilepath.toLatin1();
+	const char* out_filename = qout_filename.data();
+
+	avformat_alloc_output_context2(&m_pO_fmt_ctx, NULL, NULL, out_filename);
+	
+	if (!m_pO_fmt_ctx)
+	{
+		printf("Could not create output context!\n");
+		//Close input
+		if (m_pO_fmt_ctx && !(ofmt->flags & AVFMT_NOFILE))
+			avio_close(m_pO_fmt_ctx->pb);
+		avformat_free_context(m_pO_fmt_ctx);
+		if (ret < 0 && ret != AVERROR_EOF)
+		{
+			printf("Error occured.\n");
+			return DJJ_FAILURE;
+		}
+	}
+
+	ofmt = m_pO_fmt_ctx->oformat;
+	
+	/*
+	for (i = 0; i < m_pFormatCtx->nb_streams; i++)
+	{
+		AVStream *in_stream = m_pFormatCtx->streams[i];
+		AVStream *out_stream = avformat_new_stream(m_pO_fmt_ctx, in_stream->codec->codec);
+		if (!out_stream)
+		{
+			printf("Failed allocating output stream.\n");
+			//Close input
+			if (m_pO_fmt_ctx && !(ofmt->flags & AVFMT_NOFILE))
+				avio_close(m_pO_fmt_ctx->pb);
+			avformat_free_context(m_pO_fmt_ctx);
+			if (ret < 0 && ret != AVERROR_EOF)
+			{
+				printf("Error occured.\n");
+				return DJJ_FAILURE;
+			}
+		}
+
+		ret = avcodec_copy_context(out_stream->codec, in_stream->codec);
+		if (ret < 0)
+		{
+			printf("Failed to copy context from input to output stream codec context.\n");
+			//Close input
+			if (m_pO_fmt_ctx && !(ofmt->flags & AVFMT_NOFILE))
+				avio_close(m_pO_fmt_ctx->pb);
+			avformat_free_context(m_pO_fmt_ctx);
+			if (ret < 0 && ret != AVERROR_EOF)
+			{
+				printf("Error occured.\n");
+				return DJJ_FAILURE;
+			}
+		}
+
+		out_stream->codec->codec_tag = 0;
+
+		if (m_pO_fmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+			out_stream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+	}
+	*/
+
+	m_InStream = m_pFormatCtx->streams[m_iVideoindex];
+	m_OutStream = avformat_new_stream(m_pO_fmt_ctx, NULL);;
+	if (!m_OutStream)
+	{
+		printf("Failed allocating output stream.\n");
+		//Close input
+		if (m_pO_fmt_ctx && !(ofmt->flags & AVFMT_NOFILE))
+			avio_close(m_pO_fmt_ctx->pb);
+		avformat_free_context(m_pO_fmt_ctx);
+		if (ret < 0 && ret != AVERROR_EOF)
+		{
+			printf("Error occured.\n");
+			return DJJ_FAILURE;
+		}
+	}
+	ret = avcodec_copy_context(m_OutStream->codec, m_InStream->codec);
+	if (ret < 0)
+	{
+		printf("Failed to copy context from input to output stream codec context.\n");
+		//Close input
+		if (m_pO_fmt_ctx && !(ofmt->flags & AVFMT_NOFILE))
+			avio_close(m_pO_fmt_ctx->pb);
+		avformat_free_context(m_pO_fmt_ctx);
+		if (ret < 0 && ret != AVERROR_EOF)
+		{
+			printf("Error occured.\n");
+			return DJJ_FAILURE;
+		}
+	}
+	
+	m_OutStream->codec->codec_tag = 0;
+
+	if (m_pO_fmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+		m_OutStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+	
+	//av_dump_format(m_pO_fmt_ctx, 0, out_filename, 1);
+	//æ‰“å¼€è¾“å‡ºæ–‡ä»¶
+	if (!(ofmt->flags & AVFMT_NOFILE))
+	{
+		ret = avio_open(&m_pO_fmt_ctx->pb, out_filename, AVIO_FLAG_READ_WRITE);
+		if (ret < 0)
+		{
+			printf("Could not open output URL '%s'", out_filename);
+			//Close input
+			if (m_pO_fmt_ctx && !(ofmt->flags & AVFMT_NOFILE))
+				avio_close(m_pO_fmt_ctx->pb);
+			avformat_free_context(m_pO_fmt_ctx);
+			if (ret < 0 && ret != AVERROR_EOF)
+			{
+				printf("Error occured.\n");
+				return DJJ_FAILURE;
+			}
+		}
+	}
+	
+	//å†™æ–‡ä»¶å¤´åˆ°è¾“å‡ºæ–‡ä»¶
+	//m_pO_fmt_ctx->video_codec_id = AV_CODEC_ID_HEVC;
+
+	ret = avformat_write_header(m_pO_fmt_ctx, NULL);
+	if (ret < 0)
+	{
+		av_strerror(ret, m_errBuf, sizeof(m_errBuf));
+		printf("avformat_write_header Error:%d(%s)\n", ret, m_errBuf);
+
+		printf("Error occured when opening output URL.\n");
+		//Close input
+		if (m_pO_fmt_ctx && !(ofmt->flags & AVFMT_NOFILE))
+			avio_close(m_pO_fmt_ctx->pb);
+		avformat_free_context(m_pO_fmt_ctx);
+		if (ret < 0 && ret != AVERROR_EOF)
+		{
+			printf("Error occured.\n");
+			return DJJ_FAILURE;
+		}
+	}
+	return DJJ_SUCCESS;
+}
+
+int Cffmpeg::Saving(AVPacket *pkt) //ä¼ å…¥çš„è¿™ä¸ªpktå·²ç»æ˜¯è¯»å–è¿‡çš„pkt
+{
+	int ret;
+	static int frame_index = 0;
+
+	pkt->pts = av_rescale_q_rnd(pkt->pts, m_InStream->time_base, m_OutStream->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+	pkt->dts = av_rescale_q_rnd(pkt->dts, m_InStream->time_base, m_OutStream->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+	pkt->duration = av_rescale_q(pkt->duration, m_InStream->time_base, m_OutStream->time_base);
+
+	//é˜²æ­¢è·å–ä¸åˆ°durationçš„æƒ…å†µ
+	if (pkt->duration == 0)
+	{
+		if (m_pCodecCtx->codec_id == AV_CODEC_ID_HEVC)
+			pkt->duration = 512;
+		if (m_pCodecCtx->codec_id == AV_CODEC_ID_H264)
+			pkt->duration = 40;
+	}
+		
+	pkt->pos = -1;
+	
+	printf("pts: %lld, dts: %lld, duration: %lld \n",pkt->pts, pkt->dts, pkt->duration);
+
+	if (pkt->stream_index == m_iVideoindex)
+	{
+		printf("Receive %8d video frames from input URL\n", frame_index);
+		frame_index++;
+	}
+	
+	ret = av_interleaved_write_frame(m_pO_fmt_ctx, pkt);
+	if (ret < 0)
+	{ 
+		if (ret == -22)
+			return DJJ_SUCCESS;
+		else
+		{
+			printf("Error muxing packet. error code %d\n", ret);
+			return DJJ_FAILURE;
+		}
+	}
+	return DJJ_SUCCESS;
+}
+
+void Cffmpeg::SaveEnd()
+{
+	av_write_trailer(m_pO_fmt_ctx);
+	//-----å†™æ–‡ä»¶çš„é‡Šæ”¾æµç¨‹
+	avcodec_close(m_pO_fmt_ctx->streams[0]->codec);
+	av_freep(&m_pO_fmt_ctx->streams[0]->codec);
+	av_freep(&m_pO_fmt_ctx->streams[0]);
+
+	avio_close(m_pO_fmt_ctx->pb);
+	av_free(m_pO_fmt_ctx);
+	//avformat_free_context(m_pO_fmt_ctx);
 }

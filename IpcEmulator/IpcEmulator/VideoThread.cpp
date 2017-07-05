@@ -1,21 +1,29 @@
 #include "VideoThread.h"
 #include "common_def.h"
 
-CVideoThread::CVideoThread()
+CVideoThread::CVideoThread(CMgr* mgr)
 {
+	/*
 	m_pFFmpeg = new Cffmpeg();
 	m_pSDLPlay = new CSDLPlay();
 	m_pQue = new DJJQue();
 	m_pGive = new CGiveFrame(m_pSDLPlay,m_pFFmpeg, m_pQue);
 	m_pRcv = new CRcvFrame(m_pFFmpeg, m_pQue);
+	*/
+	m_pMgr = mgr;
 	ThreadInit();
 }
 
 
 CVideoThread::~CVideoThread()
 {
+	/*
+	delete m_pGive;
+	delete m_pRcv;
 	delete m_pFFmpeg;
 	delete m_pSDLPlay;
+	delete m_pQue;
+	*/
 }
 
 void CVideoThread::ThreadInit()
@@ -29,34 +37,19 @@ void CVideoThread::ThreadInit()
 
 void CVideoThread::run()
 {
-	//QString testPath("C:/Users/DJJ/Desktop/1080.asf");
-	QString testPath("rtsp://admin:admin123@10.255.251.238");
-	//while (m_bRunning)
-	//{
-		DecodeAndShow(testPath);
-	//}
+	DecodeAndShow(m_pMgr->m_FilePath);  //编解码及显示
 }
 
 int CVideoThread::DecodeAndShow(QString videofile)
 {
-//	AVFrame *yuvFrame = av_frame_alloc();
+	m_pMgr->m_pFFmpeg->SwsVideo();
+	//创建主播放窗口
+	m_pMgr->m_pSDLPlay->SDLCreateWindow(m_pMgr->m_pFFmpeg->m_pCodecCtx->width, m_pMgr->m_pFFmpeg->m_pCodecCtx->height, m_hWnd);
+	//创建防闪烁播放窗口
+	//m_pMgr->m_pTheFlash->SDLCreateWindow(m_pMgr->m_pFFmpeg->m_pCodecCtx->width, m_pMgr->m_pFFmpeg->m_pCodecCtx->height, m_hWnd);
 
-	m_pFFmpeg->OpenVideoFile(videofile);
-	m_pFFmpeg->SwsVideo();
-	m_pSDLPlay->SDLCreateWindow(m_pFFmpeg->m_pCodecCtx->width, m_pFFmpeg->m_pCodecCtx->height, m_hWnd);
-	
-	/*
-	while (!m_bExitDecode)
-	{
-		if(m_pFFmpeg->Decode(yuvFrame))
-			m_pSDLPlay->SDLShow(yuvFrame);
-	}
-
-	if (yuvFrame)
-		av_frame_free(&yuvFrame);
-	*/
-	m_pRcv->start();
-	m_pGive->start();
+	m_pMgr->m_pRcv->start();
+	m_pMgr->m_pGive->start();
 
 	return DJJ_SUCCESS;
 }

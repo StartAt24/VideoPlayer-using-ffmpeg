@@ -1,12 +1,7 @@
 #pragma once
 #include <QThread>
 #include <QString>
-
-#include "SDLPlay.h"
-#include "Cffmpeg.h"
-#include "RcvFrame.h"
-#include "GiveFrame.h"
-#include "DJJQue.h"
+#include "mgr.h"
 //#include <VehicleSnapApi.h>
 
 class CVideoThread :
@@ -14,7 +9,7 @@ class CVideoThread :
 {
 	Q_OBJECT
 public:
-	explicit CVideoThread();
+	explicit CVideoThread(CMgr* mgr);
 	~CVideoThread();
 	void SetVideoFile(QString filepath);
 	void SetWindow(HWND hwnd);
@@ -35,5 +30,6 @@ private:
 	CGiveFrame		*m_pGive;
 	CRcvFrame		*m_pRcv;
 	DJJQue			*m_pQue;
+	CMgr			*m_pMgr;
 };
 

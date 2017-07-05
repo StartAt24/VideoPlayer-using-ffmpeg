@@ -48,12 +48,12 @@ void DJJQue::PushPacket(AVPacket* pktIn)
 	m_qPktLock.lock();
 	m_qPktQue.push(pktIn);
 	printf("Push in %d\n", iIn++);
-	long count;
+	long count = 0;
 	ReleaseSemaphore(m_hPktSem, 1, &count);
 	if (count >= MAX_CACHE_PKT-1)
 	{
 		ResetEvent(m_hEvent);
-		printf("ResetEvent ~ Count: %ld \n", count);
+		printf("ResetEvent ~ Semaphore count: %ld \n", count);
 	}
 	m_qPktLock.unlock();
 }
@@ -68,12 +68,15 @@ void DJJQue::PopPacket(AVPacket** pktOut)
 
 	//获取信号量当前的值;
 	long count = 0;
-	ReleaseSemaphore(m_hPktSem, 0, &count);
-	if (count < MAX_CACHE_PKT-1)
+	//count返回增加前的信号量的值；
+	ReleaseSemaphore(m_hPktSem, 1, &count);
+	WaitForSingleObject(m_hPktSem, INFINITE);
+
+	printf("pop out ~ Semaphore count: %ld.\n", count);
+	if (count < MAX_CACHE_PKT - 1)
 	{
 		SetEvent(m_hEvent);
 	}
 
-	printf("pop out~ Count: %ld \n", count);
 	m_qPktLock.unlock();
 }

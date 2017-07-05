@@ -51,7 +51,10 @@ public:
         Form->resize(465, 222);
         Form->setMinimumSize(QSize(465, 222));
         Form->setMaximumSize(QSize(465, 222));
-        Form->setStyleSheet(QLatin1String("#Form{border-image:url(:/btnImg/Resources/bk.jpg);}\n"
+        Form->setStyleSheet(QLatin1String("#Form{border-image:url(:/btnImg/Resources/bk.jpg);\n"
+"	border:1px solid ;\n"
+"	border-color: rgb(203, 203, 203);\n"
+"}\n"
 ""));
         gridLayout_2 = new QGridLayout(Form);
         gridLayout_2->setObjectName(QStringLiteral("gridLayout_2"));
@@ -146,7 +149,8 @@ public:
         sizePolicy1.setHeightForWidth(cameraBtn->sizePolicy().hasHeightForWidth());
         cameraBtn->setSizePolicy(sizePolicy1);
         cameraBtn->setMinimumSize(QSize(84, 23));
-        cameraBtn->setStyleSheet(QLatin1String("QPushButton{\n"
+        cameraBtn->setStyleSheet(QLatin1String("\n"
+"QPushButton{\n"
 "	color:white;\n"
 "	border-image:url(:/btnImg/Resources/common_btn_normal_ex.png);\n"
 "}\n"
@@ -192,6 +196,11 @@ public:
 
         gridLayout_2->addLayout(horizontalLayout, 1, 0, 1, 1);
 
+        QWidget::setTabOrder(ipEdit, pwEdit);
+        QWidget::setTabOrder(pwEdit, cameraBtn);
+        QWidget::setTabOrder(cameraBtn, openBtn);
+        QWidget::setTabOrder(openBtn, fileEdit);
+        QWidget::setTabOrder(fileEdit, videoBtn);
 
         retranslateUi(Form);
 
