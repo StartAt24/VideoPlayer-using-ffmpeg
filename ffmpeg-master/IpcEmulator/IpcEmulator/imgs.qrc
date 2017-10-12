@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/btnImg">
+        <file>Resources/common_btn_click_ex.png</file>
+        <file>Resources/common_btn_hover_ex.png</file>
+        <file>Resources/common_btn_normal_ex.png</file>
+    </qresource>
+</RCC>
