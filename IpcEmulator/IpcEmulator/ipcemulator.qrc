@@ -1,0 +1,17 @@
+<RCC>
+    <qresource prefix="/IpcEmulator">
+        <file>Resources/video.png</file>
+    </qresource>
+    <qresource prefix="/btnImg">
+        <file>Resources/common_btn_click_ex.png</file>
+        <file>Resources/common_btn_hover_ex.png</file>
+        <file>Resources/common_btn_normal_ex.png</file>
+        <file>Resources/video.png</file>
+        <file>Resources/bk.jpg</file>
+        <file>Resources/user.png</file>
+        <file>Resources/MyTitle/close.png</file>
+        <file>Resources/MyTitle/max.png</file>
+        <file>Resources/MyTitle/min.png</file>
+        <file>Resources/MyTitle/restore.png</file>
+    </qresource>
+</RCC>
