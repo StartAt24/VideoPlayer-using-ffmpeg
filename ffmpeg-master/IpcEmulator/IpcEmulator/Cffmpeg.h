@@ -81,5 +81,6 @@ public:
 	int64_t				m_duration;
 	int64_t				m_currentSec;
 	bool				m_bRefresh;
+	uint8_t*			m_pYuvBuffer;
 };
 

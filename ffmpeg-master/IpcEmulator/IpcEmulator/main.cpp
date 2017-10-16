@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
 	IpcEmulator w(&mgr);				//主窗口
 	CLoginDlg  login(&mgr);			//登陆窗口
 	
+
 	a.connect(mgr.m_pFFmpeg, SIGNAL(toIpcwindow(int)), &w, SLOT(receive_Sec(int)));
 	a.connect(&w, SIGNAL(notifyRefresh(bool)), mgr.m_pFFmpeg, SLOT(refresh(bool)));
 	w.setWindowTitle("模拟相机");

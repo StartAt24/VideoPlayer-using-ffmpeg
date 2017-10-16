@@ -31,5 +31,6 @@ private:
 	CRcvFrame		*m_pRcv;
 	DJJQue			*m_pQue;
 	CMgr			*m_pMgr;
+	bool			m_bIsReady;
 };
 

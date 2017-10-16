@@ -12,6 +12,11 @@ public:
 	explicit CRcvFrame(Cffmpeg* pFFmpeg, DJJQue* pDJJQue);
 	~CRcvFrame();
 	void stop();
+	void SetPause(bool);
+	bool GetPause();
+
+	void SetMakeSure(bool);
+	bool GetMakeSure();
 
 protected:
 	void run();
@@ -19,7 +24,12 @@ protected:
 private:
 	Cffmpeg		*m_pFFmpeg;
 	DJJQue		*m_pDJJQue;
-	QMutex		m_mutex;
+	QMutex		m_StopMutex;
 	bool		m_bStopped;
+	QMutex      m_PauseMutex;
+	bool		m_bPause;
+	
+	bool		m_bMakeSurePause;
+	QMutex		m_MakeSureMutex;
 };
 

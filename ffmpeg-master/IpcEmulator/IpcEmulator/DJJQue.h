@@ -1,7 +1,12 @@
 #pragma once
 #include <queue>
 #include <QMutex>
+#ifdef __cplusplus
+extern "C"
+{
 #include <libavcodec/avcodec.h>
+}
+#endif
 #include <windows.h>
 
 class DJJQue

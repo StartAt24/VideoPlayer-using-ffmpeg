@@ -32,12 +32,14 @@ public:
 
 private:
 	
-	SDL_Window		*m_pScreen;				//窗口
+	
 	SDL_Renderer	*m_pSdlRenderer;		//渲染器
 	SDL_Texture		*m_pSdlTexture;	
 	SDL_Rect		 m_tSdlRect;
 	SDL_Thread		*m_pVideo_tid;
 	SDL_Event		 m_uEvent;
 	HWND			 m_hWnd;				//播放视频的窗口句柄
+public:
+	SDL_Window		*m_pScreen;				//窗口
 };
 

@@ -13,6 +13,8 @@ CGiveFrame::CGiveFrame(CSDLPlay* pSDLPlay, Cffmpeg *pFFmpeg, DJJQue *pDJJQue, CS
 
 	m_pLock = new QMutex();
 	m_bStopped = false;
+	m_bPause = false;
+	m_bMakeSurePause = false;
 }
 
 
@@ -58,7 +60,7 @@ void CGiveFrame::run()
 			{
 				m_pSDLPlay->SDLShow(yuv, lineSize);
 			}	
-			free(yuv);
+			//free(yuv);
 		}
 		
 		if (m_pMgr->m_bIsRecord)
@@ -68,7 +70,7 @@ void CGiveFrame::run()
 		}
 
 		{
-			QMutexLocker locker(&m_mutex);
+			QMutexLocker locker(&m_StopMutex);
 			if (m_bStopped)
 			{
 				av_packet_free(&pkt);
@@ -77,12 +79,44 @@ void CGiveFrame::run()
 		}
 		//av_packet_free 才能释放pkt本身和其拥有的数据所占的内存,av_free_packet不能释放 packet引用的data的内存;
 		av_packet_free(&pkt);
+
+		while (GetPause())
+		{
+			SetMakeSure(true);
+			Sleep(200);
+		}
 	}
 }
 
 void CGiveFrame::stop()
 {
 	printf("Stop GiveFrame thread!\n");
-	QMutexLocker locker(&m_mutex);
+	QMutexLocker locker(&m_StopMutex);
 	m_bStopped = true;
+}
+
+void CGiveFrame::SetPause(bool pause)
+{
+	printf("Set GiveFrame thread pause : %d!\n", pause);
+	QMutexLocker locker(&m_PauseMutex);
+	m_bPause = pause;
+}
+
+bool CGiveFrame::GetPause()
+{
+	QMutexLocker locker(&m_PauseMutex);
+	return m_bPause;
+}
+
+void CGiveFrame::SetMakeSure(bool bMakesure)
+{
+	printf("MakeSure GiveFrame thread pause : %d\n", bMakesure);
+	QMutexLocker locker(&m_MakeSureMutex);
+	m_bMakeSurePause = bMakesure;
+}
+
+bool CGiveFrame::GetMakeSure()
+{
+	QMutexLocker locker(&m_MakeSureMutex);
+	return m_bMakeSurePause;
 }

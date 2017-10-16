@@ -3,13 +3,7 @@
 
 CVideoThread::CVideoThread(CMgr* mgr)
 {
-	/*
-	m_pFFmpeg = new Cffmpeg();
-	m_pSDLPlay = new CSDLPlay();
-	m_pQue = new DJJQue();
-	m_pGive = new CGiveFrame(m_pSDLPlay,m_pFFmpeg, m_pQue);
-	m_pRcv = new CRcvFrame(m_pFFmpeg, m_pQue);
-	*/
+
 	m_pMgr = mgr;
 	ThreadInit();
 }
@@ -17,13 +11,6 @@ CVideoThread::CVideoThread(CMgr* mgr)
 
 CVideoThread::~CVideoThread()
 {
-	/*
-	delete m_pGive;
-	delete m_pRcv;
-	delete m_pFFmpeg;
-	delete m_pSDLPlay;
-	delete m_pQue;
-	*/
 }
 
 void CVideoThread::ThreadInit()
@@ -33,20 +20,26 @@ void CVideoThread::ThreadInit()
 	m_bPause = false;
 	m_bDecoding = true;
 	m_bExitDecode = false;
+	m_bIsReady = false;
 }
 
 void CVideoThread::run()
 {
+	if (m_bIsReady == false)
+	{
+		m_pMgr->m_pFFmpeg->SwsVideo();
+		//创建主播放窗口
+		m_pMgr->m_pSDLPlay->SDLCreateWindow(m_pMgr->m_pFFmpeg->m_pCodecCtx->width, m_pMgr->m_pFFmpeg->m_pCodecCtx->height, m_hWnd);
+		//创建防闪烁播放窗口
+		//m_pMgr->m_pTheFlash->SDLCreateWindow(m_pMgr->m_pFFmpeg->m_pCodecCtx->width, m_pMgr->m_pFFmpeg->m_pCodecCtx->height, m_hWnd);
+		m_bIsReady = true;
+	}
+	
 	DecodeAndShow(m_pMgr->m_FilePath);  //编解码及显示
 }
 
 int CVideoThread::DecodeAndShow(QString videofile)
 {
-	m_pMgr->m_pFFmpeg->SwsVideo();
-	//创建主播放窗口
-	m_pMgr->m_pSDLPlay->SDLCreateWindow(m_pMgr->m_pFFmpeg->m_pCodecCtx->width, m_pMgr->m_pFFmpeg->m_pCodecCtx->height, m_hWnd);
-	//创建防闪烁播放窗口
-	//m_pMgr->m_pTheFlash->SDLCreateWindow(m_pMgr->m_pFFmpeg->m_pCodecCtx->width, m_pMgr->m_pFFmpeg->m_pCodecCtx->height, m_hWnd);
 
 	m_pMgr->m_pGive->start();
 	m_pMgr->m_pRcv->start();

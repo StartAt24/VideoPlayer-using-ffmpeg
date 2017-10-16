@@ -81,9 +81,10 @@ void IpcEmulator::on_playBtn_clicked()
 	m_pVideoThread->start();
 }
 
-
+/*
 void IpcEmulator::on_progressBar_sliderReleased()
 {
+
 	//停止两个线程; 必须用terminate()才能停止，然后再start()。如果用quit()不能重新start();
 	m_pMgr->m_pGive->stop();
 	m_pMgr->m_pGive->terminate();
@@ -97,7 +98,7 @@ void IpcEmulator::on_progressBar_sliderReleased()
 
 	//清空队列
 	m_pMgr->m_pQue->PktQueClear();
-
+	
 	//根据拖动的位置重新设置播放位置
 	int targetTime = ui.progressBar->value();
 	m_pMgr->m_pFFmpeg->Seek(targetTime);
@@ -108,7 +109,37 @@ void IpcEmulator::on_progressBar_sliderReleased()
 
 	m_bSliderPressed = false;
 }
+*/
+void IpcEmulator::on_progressBar_sliderReleased()
+{
+	//先暂停两个线程;
+	m_pMgr->m_pGive->SetPause(true);
+	m_pMgr->m_pRcv->SetPause(true);
+	//首先要确保两个线程暂停了
+	while (!m_pMgr->m_pGive->GetMakeSure() || !m_pMgr->m_pGive->GetMakeSure())
+	{
+		Sleep(20);
+	}
 
+
+	//清空队列
+	m_pMgr->m_pQue->PktQueClear();
+
+	//根据拖动位置重新设置播放位置
+	int targetTime = ui.progressBar->value();
+	m_pMgr->m_pFFmpeg->Seek(targetTime);
+
+	//重新播放;
+	m_pMgr->m_pGive->SetPause(false);
+	m_pMgr->m_pRcv->SetPause(false);
+
+	m_pMgr->m_pGive->SetMakeSure(false);
+	m_pMgr->m_pRcv->SetMakeSure(false);
+
+	emit notifyRefresh(true);
+
+	m_bSliderPressed = false;
+}
 
 void IpcEmulator::on_recordBtn_clicked()
 {
@@ -149,11 +180,11 @@ void IpcEmulator::resizeEvent(QResizeEvent *event)
 void IpcEmulator::on_backBtn_clicked()
 {
 	m_pMgr->m_pGive->stop();
-	m_pMgr->m_pGive->quit();
+	m_pMgr->m_pGive->terminate();
 	m_pMgr->m_pGive->wait();
 
 	m_pMgr->m_pRcv->stop();
-	m_pMgr->m_pRcv->quit();
+	m_pMgr->m_pRcv->terminate();
 	m_pMgr->m_pRcv->wait();
 
 	m_pVideoThread->terminate();

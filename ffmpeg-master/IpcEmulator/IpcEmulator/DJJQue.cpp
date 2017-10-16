@@ -1,6 +1,5 @@
 #include "DJJQue.h"
-
-#define  MAX_CACHE_PKT   50			//最大缓存的package数
+#include "common_def.h"
 
 DJJQue::DJJQue()
 {	
@@ -21,7 +20,7 @@ DJJQue::DJJQue()
 
 	//可以写的信号,初始可写
 	m_hWrite = CreateSemaphore(NULL, 1, 1, NULL);
-	//可以读的信号,初始可以读
+	//可以读的信号,初始不可以读
 	m_hRead = CreateSemaphore(NULL, 0, 1, NULL);
 }
 
@@ -112,7 +111,7 @@ void DJJQue::PushPacket(AVPacket* pktIn)
 		if (m_qPktQue.size() <= MAX_CACHE_PKT - 1)
 		{
 			m_qPktQue.push(pktIn);
-			printf("Que push in %d.\n", iIn++);
+			//printf("Que push in %d.\n", iIn++);
 			ReleaseSemaphore(m_hRead, 1, NULL);
 			break;
 		}
@@ -136,7 +135,7 @@ void DJJQue::PopPacket(AVPacket** pktOut)
 		{
 			*pktOut = m_qPktQue.front();
 			m_qPktQue.pop();
-			printf("Que pop out : %d.\n", iOut++);
+			//printf("Que pop out : %d.\n", iOut++);
 			ReleaseSemaphore(m_hWrite, 1, NULL);
 			break;
 		}
@@ -152,6 +151,22 @@ void DJJQue::PopPacket(AVPacket** pktOut)
  
 void DJJQue::PktQueClear()
 {
-	std::queue<AVPacket*> empty;
-	m_qPktQue.swap(empty);
+	//清空队列
+	//std::queue<AVPacket*> empty;
+	//m_qPktQue.swap(empty);
+	//Sleep(1000);
+	
+	AVPacket* pkt;
+	int size = m_qPktQue.size();
+	for (int i = 0; i < size; i++)
+	{
+		pkt = m_qPktQue.front();
+		//av_free_packet(pkt);
+		av_packet_free(&pkt);
+		m_qPktQue.pop();
+	}
+	
+	//重置信号量。
+	WaitForSingleObject(m_hRead, INFINITE);
+	ReleaseSemaphore(m_hWrite, 1, NULL);
 }

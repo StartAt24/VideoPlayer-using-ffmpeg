@@ -16,6 +16,11 @@ public:
 	~CGiveFrame();
 	void stop();
 
+	void SetPause(bool);
+	bool GetPause();
+
+	void SetMakeSure(bool);
+	bool GetMakeSure();
 protected:
 	void run();
 
@@ -27,6 +32,11 @@ private:
 	CSDLPlay    *m_pTheFlash;
 	CMgr		*m_pMgr;
 	bool		m_bStopped;
-	QMutex      m_mutex;
+	QMutex      m_StopMutex;
+	bool		m_bPause;
+	QMutex		m_PauseMutex;
+
+	bool		m_bMakeSurePause;
+	QMutex		m_MakeSureMutex;
 };
 

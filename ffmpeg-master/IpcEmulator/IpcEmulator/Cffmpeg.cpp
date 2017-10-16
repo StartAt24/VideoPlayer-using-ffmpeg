@@ -43,6 +43,7 @@ int Cffmpeg::ffmpegInit()
 	m_OutStream = NULL;
 	m_InStream = NULL;
 	m_duration = 0;
+	m_pYuvBuffer = NULL;
 
 	av_register_all();
 	avcodec_register_all();
@@ -65,6 +66,8 @@ void Cffmpeg::ffmpegClose()
 	if (m_pImg_convert_ctx)
 		sws_freeContext(m_pImg_convert_ctx);
 
+	if (m_pYuvBuffer)
+		free(m_pYuvBuffer);
 	//-----写文件的释放流程
 	/*
 	avcodec_close(m_pO_fmt_ctx->streams[0]->codec);
@@ -172,6 +175,10 @@ int Cffmpeg::SwsVideo(int dstWidth/* =0 */, int dstHeight/* =0 */, AVPixelFormat
 	//av_malloc封装了malloc并做了一些安全性操作;
 	out_buffer = (uint8_t *)av_malloc(avpicture_get_size(pix_fmt, m_pCodecCtx->width, m_pCodecCtx->height));
 
+	//-------统一分配一段内存给外部使用
+	m_pYuvBuffer = (uint8_t*)av_malloc(avpicture_get_size(pix_fmt, m_pCodecCtx->width, m_pCodecCtx->height));
+	memset(m_pYuvBuffer, 0, avpicture_get_size(pix_fmt, m_pCodecCtx->width, m_pCodecCtx->height));
+
 	//avpicture_fill 将pFrameYUV 按照 AV_PIX_FMT_YUV420P的格式“关联”到 out_buffer, 数据转换完之后 也自动保存到了out_buffer;
 	avpicture_fill((AVPicture *)m_pDstFrame, out_buffer, pix_fmt, m_pCodecCtx->width, m_pCodecCtx->height);
 
@@ -204,7 +211,7 @@ int Cffmpeg::ReadPkt(AVPacket** pOutPkt)
 		//av_packet_unref(pkt); //每次读取packet之前需要先free;
 	}
 
-	return DJJ_FAILURE;
+	return ret;
 }
 
 int Cffmpeg::ProcessPkt(AVPacket* pPkt, uint8_t** out, int* linesize)
@@ -230,9 +237,9 @@ int Cffmpeg::ProcessPkt(AVPacket* pPkt, uint8_t** out, int* linesize)
 			m_pCodecCtx->height, m_pDstFrame->data, m_pDstFrame->linesize);
 		//memcpy(pOutFrame, m_pDstFrame, sizeof(AVFrame));
 
-		(*out) = (uint8_t*)malloc(avpicture_get_size(AV_PIX_FMT_YUV420P, m_pCodecCtx->width, m_pCodecCtx->height));
+		memcpy(m_pYuvBuffer, m_pDstFrame->data[0], avpicture_get_size(AV_PIX_FMT_YUV420P, m_pCodecCtx->width, m_pCodecCtx->height));
+		*out = m_pYuvBuffer;
 
-		memcpy((*out), m_pDstFrame->data[0], avpicture_get_size(AV_PIX_FMT_YUV420P, m_pCodecCtx->width, m_pCodecCtx->height));
 		*linesize = m_pDstFrame->linesize[0];
 	}
 
@@ -248,7 +255,8 @@ int Cffmpeg::ProcessPkt(AVPacket* pPkt, uint8_t** out, int* linesize)
 		m_currentSec = pPkt->pts*(double)av_q2d(m_pFormatCtx->streams[m_iVideoindex]->time_base);
 	}
 	
-	if (m_currentSec <  (m_pFormatCtx->duration + 5000)/AV_TIME_BASE)
+	//m_currentSec有一帧会变成 -(AV_NOPTS_VALUE)? 原因不知道，暂时屏蔽
+	if ( m_currentSec <  (m_pFormatCtx->duration + 5000)/AV_TIME_BASE && m_currentSec>=0)
 	{
 		printf("CurrentSec is %d \n", m_currentSec);
 		if (m_bRefresh)
